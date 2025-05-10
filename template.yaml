@@ -42,6 +42,16 @@ Resources:
                 Action:
                   - states:StartExecution
                 Resource: !Ref leaveStateMachine
+        - PolicyName: PermissionsForLambdaInvocation
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                  - logs:*
+                Resource: '*'
+  
   RestApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -79,7 +89,6 @@ Resources:
               responses:
                 "200":
                   description: "200 response"
-
       Auth:
         DefaultAuthorizer: LeaveAuthorizer
         Authorizers:
@@ -126,6 +135,7 @@ Resources:
         Variables:
           SES_EMAIL: "gokul.jangam@antstack.io"
           TABLE_NAME: !Ref LeaveTable
+          API_URL: !Ref LeaveAPIProcess
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -139,6 +149,12 @@ Resources:
           - 'aws-sdk'
           - '@aws-sdk/client-dynamodb'
           - '@aws-sdk/lib-dynamodb'
+  LeaveAPIProcess:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: LeaveManagementAPI
+      StageName: Prod
+      Cors: "'*'"
   LeaveProcessApprovalFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -159,10 +175,8 @@ Resources:
           Type: Api
           Properties:
             Path: /process-approval
-            Method: GET
-            RestApiId: !Ref RestApi
-            Auth:
-              Authorizer: NONE 
+            Method: get
+            RestApiId: !Ref LeaveAPIProcess
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -174,11 +188,11 @@ Resources:
         External:
           - '@aws-sdk/client-sfn'
 
-  RejectedNotifyUserFunction:
+  NotifyUserFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ./
-      Handler: rejectedNotifyUser.notifyUserHandler
+      Handler: notifyUser.notifyUserHandler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
@@ -197,39 +211,12 @@ Resources:
         Target: es2020
         Sourcemap: true
         EntryPoints:
-          - lambdas/rejectedNotifyUser.ts
+          - lambdas/notifyUser.ts
         External:
           - '@aws-sdk/client-ses'
           - '@aws-sdk/client-dynamodb'
           - '@aws-sdk/lib-dynamodb'
-  ApprovedNotifyUserFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ./
-      Handler: approvedNotifyUser.notifyUserHandler
-      Runtime: nodejs22.x
-      Architectures:
-        - x86_64
-      Policies:
-        - AmazonSESFullAccess
-        - DynamoDBCrudPolicy:
-            TableName: !Ref LeaveTable
-      Environment:
-        Variables:
-          SES_EMAIL: "gokul.jangam@antstack.io"
-          TABLE_NAME: !Ref LeaveTable
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2020
-        Sourcemap: true
-        EntryPoints:
-          - lambdas/approvedNotifyUser.ts
-        External:
-          - '@aws-sdk/client-ses'
-          - '@aws-sdk/client-dynamodb'
-          - '@aws-sdk/lib-dynamodb'
+  
   StepFunctionsExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -250,6 +237,7 @@ Resources:
                   - lambda:InvokeFunction
                   - logs:*
                 Resource: '*' 
+
   leaveStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -266,62 +254,37 @@ Resources:
               "Parameters": {
                 "FunctionName": "${LeaveSendEmailToApproverFunction.Arn}",
                 "Payload": {
-                  "input.$": "$",
+                  "userEmail.$": "$.employeeEmail",
+                  "startDate.$": "$.startDate",
+                  "endDate.$": "$.startDate",
+                  "leaveType.$": "$.leaveType",
+                  "approverEmail.$": "$.approverEmail",
                   "taskToken.$": "$$.Task.Token"
                 }
               },
               "ResultPath": "$.approvalResult",
               "TimeoutSeconds": 600,
-              "Next": "CheckApprovalStatus"
+              "Next": "NotifyUser"
             },
-            "CheckApprovalStatus": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.approvalResult.approvalStatus",
-                  "StringEquals": "Approved",
-                  "Next": "ApprovedNotifyUser"
-                },
-                {
-                  "Variable": "$.approvalResult.approvalStatus",
-                  "StringEquals": "Rejected",
-                  "Next": "RejectedNotifyUser"
-                }
-              ],
-              "Default": "FailState"
-            },
-            "RejectedNotifyUser": {
+            "NotifyUser": {
               "Type": "Task",
-              "Resource": "${RejectedNotifyUserFunction.Arn}",
+              "Resource": "${NotifyUserFunction.Arn}",
               "Parameters": {
-                "leaveID.$": "$.leaveID",
-                "userEmail.$": "$.userEmail",
-                "leaveDetails.$": "$.leaveDetails",
-                "approvalStatus.$": "$.approvalResult.approvalStatus"
+                "userEmail.$": "$.employeeEmail",
+                "startDate.$": "$.startDate",
+                "endDate.$": "$.startDate",
+                "leaveType.$": "$.leaveType",
+                "approvalStatus.$": "$.approvalResult.approvalStatus",
+                "leaveID.$": "$.approvalResult.leaveID"
               },
               "End": true
-            },
-            "ApprovedNotifyUser": {
-              "Type": "Task",
-              "Resource": "${ApprovedNotifyUserFunction.Arn}",
-              "Parameters": {
-                "leaveID.$": "$.leaveID",
-                "userEmail.$": "$.userEmail",
-                "leaveDetails.$": "$.leaveDetails",
-                "approvalStatus.$": "$.approvalResult.approvalStatus"
-              },
-              "End": true
-            },
-            "FailState": {
-              "Type": "Fail",
-              "Cause": "Approval process failed or timed out"
             }
           }
         }
-
-
 
 Outputs:
   StartLeaveWorkflowApiEndpoint:
     Description: "API Gateway endpoint URL for Leave Management"
     Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/dev"
+    Export:
+      Name: StartLeaveWorkflowApiEndpoint

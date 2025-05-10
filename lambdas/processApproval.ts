@@ -4,6 +4,7 @@ import {sfsSendSuccessfulMsgFun} from './utils/sfsHelper'
 export const processApprovalHandler = async (event:APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const status = event.queryStringParameters?.status;
   const taskToken = event.queryStringParameters?.taskToken;
+  const leaveID = event.queryStringParameters?.leaveID as string;
   if (!status || !taskToken) {
     return {
       statusCode: 400,
@@ -14,7 +15,7 @@ export const processApprovalHandler = async (event:APIGatewayProxyEvent): Promis
   }
   try {
     // resume the step function by using task token
-    await sfsSendSuccessfulMsgFun(taskToken, status)
+    await sfsSendSuccessfulMsgFun(taskToken, status, leaveID)
     return {
       statusCode: 200,
       body: `you have ${status} the leave request`

@@ -1,17 +1,12 @@
 import {DynamoDBDocumentClient, UpdateCommand} from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import {mockClient} from 'aws-sdk-client-mock';
-import {notifyUserHandler} from '../../lambdas/rejectedNotifyUser'
+import {notifyUserHandler} from '../../lambdas/notifyUser'
 process.env.TABLE_NAME = 'myTable';
 const ddbMock = mockClient(DynamoDBDocumentClient);
 const sesMock = mockClient(SESClient);
-interface Event {
-    approvalStatus?: string,
-    leaveDetails?: Record<string, string>,
-    leaveID?: string,
-    userEmail?: string
-}
-const event: Event = {}
+
+const event: Record<string,string> = {}
 
 describe('unit test for the notify approver', function() {
     beforeEach(() => {
@@ -25,10 +20,14 @@ describe('unit test for the notify approver', function() {
     })
     test('If fails to update the data in DynamoDB', async() => {
         const event1 = {
-            approvalStatus: "string",
-            leaveDetails: {},
-            leaveID: "string",
-            userEmail: "string"
+            userEmail: 'example@abc.com',
+            approverEmail: 'example@abc.com',
+            leaveType: 'vacation',
+            startDate: '10-10-10',
+            endDate: '10-10-10',
+            taskToken: 'fgh',
+            leaveID: 'ftyuj',
+            approvalStatus: 'Approved'
         }
         ddbMock.on(UpdateCommand).rejects(new Error('Error while Updating table'));
         const result = await notifyUserHandler(event1);
@@ -37,10 +36,14 @@ describe('unit test for the notify approver', function() {
     })
     test('If fails to send email', async() => {
         const event1 = {
-            approvalStatus: "string",
-            leaveDetails: {},
-            leaveID: "string",
-            userEmail: "string"
+            userEmail: 'example@abc.com',
+            approverEmail: 'example@abc.com',
+            leaveType: 'vacation',
+            startDate: '10-10-10',
+            endDate: '10-10-10',
+            taskToken: 'fgh',
+            leaveID: 'ftyuj',
+            approvalStatus: 'Approved'
         }
         ddbMock.on(UpdateCommand).resolves({})
         sesMock.on(SendEmailCommand).rejects(new Error('Error while sending email'));
@@ -50,10 +53,14 @@ describe('unit test for the notify approver', function() {
     })
     test('Passes every test case', async() => {
         const event1 = {
-            approvalStatus: "string",
-            leaveDetails: {},
-            leaveID: "string",
-            userEmail: "string"
+            userEmail: 'example@abc.com',
+            approverEmail: 'example@abc.com',
+            leaveType: 'vacation',
+            startDate: '10-10-10',
+            endDate: '10-10-10',
+            taskToken: 'fgh',
+            leaveID: 'ftyuj',
+            approvalStatus: 'Approved'
         }
         ddbMock.on(UpdateCommand).resolves({})
         sesMock.on(SendEmailCommand).resolves({});

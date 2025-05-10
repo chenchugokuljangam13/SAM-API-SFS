@@ -14,9 +14,9 @@ type Input2 = Record<string, string|Input1>
 //     }));
 // }
 
-export async function sfsSendSuccessfulMsgFun(taskToken: string, status:string){
+export async function sfsSendSuccessfulMsgFun(taskToken: string, status:string, leaveID:string){
     await stepFunction.send(new SendTaskSuccessCommand({
         taskToken,
-        output: JSON.stringify({ approvalStatus: status })
+        output: JSON.stringify({ approvalStatus: status, leaveID })
     }));
 }

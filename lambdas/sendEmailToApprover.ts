@@ -1,12 +1,12 @@
 import {sendEmailBySES} from './utils/sesHelper'
 import {ddbPutCommandHelper} from './utils/ddbHelpers'
 const TABLE_NAME = process.env.TABLE_NAME as string;
+const apiBaseUrl = process.env.API_URL as string;
 export const sendEmailToApproverHandler = async (event:any) => {
+  console.log(event)
   try {
-    const { input, taskToken } = event;
-    const { employeeEmail, startDate, endDate, leaveType, approverEmail } = input;
-    const userEmail = employeeEmail;
-    const reason = input.reason || '';
+    const { userEmail, startDate, endDate, leaveType, approverEmail, taskToken } = event;
+    const reason = event.reason || 'Reason not mentioned';
     if (!leaveType || !startDate || !endDate || !approverEmail || !userEmail) {
       return { 
         statusCode: 400,
@@ -16,9 +16,6 @@ export const sendEmailToApproverHandler = async (event:any) => {
       };
     }
     const leaveID = `ID-${Date.now()}`;
-    // it will we used in further states to send in emails and trigger endpoint
-    // const apiBaseUrl = `https://${event.requestContext.domainName}/${event.requestContext.stage}`;
-    const apiBaseUrl = `http`;
     const item = {
       leaveID,
       userEmail,
@@ -33,7 +30,6 @@ export const sendEmailToApproverHandler = async (event:any) => {
       const res = await ddbPutCommandHelper(
           TABLE_NAME,
           item);
-      console.log(res)
       } catch(error) {
         return {
           statusCode: 500,
@@ -43,8 +39,8 @@ export const sendEmailToApproverHandler = async (event:any) => {
         }
       }
     // we send these two links to invoke another process approval lambda
-    const approvalLink = `${apiBaseUrl}/process-approval?leaveID=${leaveID}&status=Approved&taskToken=${encodeURIComponent(taskToken)}`;
-    const rejectionLink = `${apiBaseUrl}/process-approval?leaveID=${leaveID}&status=Rejected&taskToken=${encodeURIComponent(taskToken)}`;
+    const approvalLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/Prod/process-approval?leaveID=${leaveID}&status=Approved&taskToken=${encodeURIComponent(taskToken)}`;
+    const rejectionLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/Prod/process-approval?leaveID=${leaveID}&status=Rejected&taskToken=${encodeURIComponent(taskToken)}`;
     const emailParams = {
       Destination: { ToAddresses: [approverEmail] },
       Message: {

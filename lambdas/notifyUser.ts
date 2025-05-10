@@ -1,19 +1,18 @@
 import {ddbUpdateCommandHelper} from './utils/ddbHelpers'
 import {sendEmailBySES} from './utils/sesHelper'
 
-interface Event {
-  approvalStatus?: string,
-  leaveDetails?: Record<string, string>,
-  leaveID?: string,
-  userEmail?: string
-}
+type Event = Record<string, string>;
 
 export const notifyUserHandler = async (event: Event) => {
+  console.log(event)
   const leaveID = event?.leaveID;
   const userEmail = event?.userEmail;
-  const leaveDetails = event?.leaveDetails;
-  const approvalStatus = event.approvalStatus;
-  if (!leaveID || !userEmail || !leaveDetails || !approvalStatus) {
+  const leaveType = event?.leaveType;
+  const endDate = event?.endDate;
+  const startDate = event?.startDate;
+  const approvalStatus = event?.approvalStatus;
+  const reason = event.reason || "Reason not mentioned";
+  if (!leaveID || !userEmail || !leaveType || !approvalStatus) {
     return {
       statusCode: 400,
       body: JSON.stringify({ message: "Missing required input fields" }),
@@ -36,7 +35,6 @@ export const notifyUserHandler = async (event: Event) => {
     // changes the status of item in Db
     await ddbUpdateCommandHelper(data)
   } catch(error) {
-    console.log(error)
     return {
       statusCode: 500,
       body: JSON.stringify({message: 'Data unable to send to DynamoDB'})
@@ -50,10 +48,10 @@ export const notifyUserHandler = async (event: Event) => {
           Data: `
             <h4>Your Leave Request status has been changed to ${approvalStatus}</h4>
             <h5>Details of your leave request ${leaveID}</h5>
-            <p>Leave Type - ${leaveDetails.leaveType}</p>
-            <p>Start Date - ${leaveDetails.startDate}</p>
-            <p>End Date - ${leaveDetails.endDate}</p>
-            <p>Reason for the leave is ${leaveDetails.reason}</p>
+            <p>Leave Type - ${leaveType}</p>
+            <p>Start Date - ${startDate}</p>
+            <p>End Date - ${endDate}</p>
+            <p>Reason for the leave is ${reason}</p>
           `
         }
       },
@@ -72,7 +70,6 @@ export const notifyUserHandler = async (event: Event) => {
       })
     }
   } catch(error) {
-    console.log(error)
     return {
       statusCode: 500,
       body: JSON.stringify({
