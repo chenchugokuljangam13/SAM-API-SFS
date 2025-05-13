@@ -59,36 +59,10 @@ Resources:
       StageName: dev
       Cors: "'*'"
       DefinitionBody:
-        swagger: "2.0"
-        info:
-          title: "LeaveAPi"
-          version: "1.0"
-        paths:
-          /apply-leave:
-            post:
-              request:
-                - application/json
-              response:
-                - application/json
-              x-amazon-apigateway-integration:
-                uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:states:action/StartExecution
-                httpMethod: POST
-                type: aws
-                credentials:
-                  Fn::GetAtt: [RestApiRole, Arn]
-                requestTemplates:
-                  application/json: |
-                    {
-                      "input": "$util.escapeJavaScript($input.body)",
-                      "stateMachineArn": "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:leaveStateMachine"
-                    }
-                responses:
-                  default:
-                    statusCode: "200"
-              responses:
-                "200":
-                  description: "200 response"
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: api/swagger.yaml
       Auth:
         DefaultAuthorizer: LeaveAuthorizer
         Authorizers:
@@ -153,7 +127,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       Name: LeaveManagementAPI
-      StageName: Prod
+      StageName: dev
       Cors: "'*'"
   LeaveProcessApprovalFunction:
     Type: AWS::Serverless::Function

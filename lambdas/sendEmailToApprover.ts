@@ -39,8 +39,8 @@ export const sendEmailToApproverHandler = async (event:any) => {
         }
       }
     // we send these two links to invoke another process approval lambda
-    const approvalLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/Prod/process-approval?leaveID=${leaveID}&status=Approved&taskToken=${encodeURIComponent(taskToken)}`;
-    const rejectionLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/Prod/process-approval?leaveID=${leaveID}&status=Rejected&taskToken=${encodeURIComponent(taskToken)}`;
+    const approvalLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/dev/process-approval?leaveID=${leaveID}&status=Approved&taskToken=${encodeURIComponent(taskToken)}`;
+    const rejectionLink = `https://${apiBaseUrl}.execute-api.us-east-1.amazonaws.com/dev/process-approval?leaveID=${leaveID}&status=Rejected&taskToken=${encodeURIComponent(taskToken)}`;
     const emailParams = {
       Destination: { ToAddresses: [approverEmail] },
       Message: {
