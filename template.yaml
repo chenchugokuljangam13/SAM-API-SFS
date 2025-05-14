@@ -1,14 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  actual-leave-jcg
-
-  Sample SAM Template for actual-leave-jcg
+  gokul leave management
 Globals:
   Function:
     Timeout: 15
     LoggingConfig:
       LogFormat: JSON
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref LeaveTable
+
 Parameters:
   MySecretValue:
     Type: String
@@ -96,8 +98,6 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET: !Ref MySecretValue
-      
-  
   LeaveSendEmailToApproverFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -113,7 +113,6 @@ Resources:
       Environment:
         Variables:
           SES_EMAIL: "gokul.jangam@antstack.io"
-          TABLE_NAME: !Ref LeaveTable
           API_URL: !Ref LeaveAPIProcess
     Metadata:
       BuildMethod: esbuild
@@ -182,7 +181,6 @@ Resources:
       Environment:
         Variables:
           SES_EMAIL: "gokul.jangam@antstack.io"
-          TABLE_NAME: !Ref LeaveTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
