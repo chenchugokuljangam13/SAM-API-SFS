@@ -95,7 +95,6 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          # JWT_SECRET: 'bXlzZWNyZXQta2V5LTI1Ni1iaXRzLXNob3VsZC1iZS1zZWN1cmUhIQ'
           JWT_SECRET: !Ref MySecretValue
       
   
